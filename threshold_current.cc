@@ -161,8 +161,9 @@ int main ()
     return 0;
 }
 
+// following are the functions which evaluate the RHS of the H-H equations for multiple nodes
 
-double hhnode_fm(double v, double m)
+double hhnode_fm(double v, double m) // this function calculates the change in the value of 'm'
 {
     double v1 = v + 20.4; double v2 = v + 25.7;
     double am = (1.314 * v1) / (1.0 - exp(-v1/10.3));
@@ -171,7 +172,7 @@ double hhnode_fm(double v, double m)
     return fm;
 }
 
-double hhnode_fh(double v, double h)
+double hhnode_fh(double v, double h) // this function calculates the change in the value of 'h'
 {
     double v3 = v + 114.0;
     double ah = -(0.068 * v3) / (1.0- exp(v3/11.0));
@@ -180,14 +181,14 @@ double hhnode_fh(double v, double h)
     return fh;
 }
 
-double hhnode_fV(double v,double v_central, double m, double h, double Iext, double kappa)
+double hhnode_fV(double v,double v_central, double m, double h, double Iext, double kappa) // this function calculates the change in the potential of peripheral nodes
 {
     double I_ion = 20.0 * (v + 80.0) + m*m*m*h * 1100.0 * (v - 50.0);
     double fV = (-I_ion + Iext + kappa * (v_central - v))/2;
     return fV;
 }
 
-double hhnode_fV_central(double v, double v_peri_nodes[], double m, double h, double kappa, int N)
+double hhnode_fV_central(double v, double v_peri_nodes[], double m, double h, double kappa, int N) // this function calculates the change in the potential of the central node
 {
     double I_ion = 20.0 * (v + 80.0) + m*m*m*h * 1100.0 * (v - 50.0);
     double sum = 0;
