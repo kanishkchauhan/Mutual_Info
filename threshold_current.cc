@@ -39,7 +39,7 @@ int main ()
     // this 'alpha' will be used to obtain the next value of kappa
 
     ofstream file; //creating the file to store data
-    file.open("threshold_VS_coupling_data.csv");
+    file.open("threshold_VS_coupling_data.csv"); //this will create this file and the data will be stored in it
 
     for (int N = 2; N <= 10; N++) 
     {
@@ -152,7 +152,7 @@ int main ()
             }
             cout << "The required threshold current is: " << Iext-0.1 << " for kappa "<< kappa << endl; // because last iteration of the previous loop adds an extra 0.1 to Iext
             file << Iext-0.1 << endl;
-            Iext = Iext - 2;
+            Iext = Iext - 10;
             double expo = alpha * (counter - 1);
             kappa = kappa_min * pow(10,expo);
         }            
