@@ -1,4 +1,4 @@
-/**
+/*
  *        File: firingVScoupling.cc
  *      Author: Kanishk Chauhan
  *        Date: June 8, 2019
@@ -23,8 +23,8 @@ double hhnode_fV_central(double v, double v_peri_nodes[], double m, double h, do
 double hhnode_fm(double v, double m);
 double hhnode_fh(double v, double h);
 
-const double tmax = 200; //max time in ms (equal to 10 s)
-const double dt = 0.001; //time step
+const double tmax = 300; //max time in ms (equal to 10 s)
+const double dt = 0.0001; //time step
 const double tu = 100; //relaxation time
 
 int main ()
