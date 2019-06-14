@@ -5,8 +5,8 @@
  * Description: to determine the dependence of the firing rate, the coefficient of variance 
  *              , and count of spikes on the coupling strength and the number of nodes in a 
  *              Hodgkin-Huxley model.
- *               
- */
+ *              This program creates a .csv (comma separated) file that can be used to plot graphs
+ */    
 
 
 # include <iostream>
