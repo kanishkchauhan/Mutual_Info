@@ -2,18 +2,18 @@
  *        File: firingVScoupling.cc
  *      Author: Kanishk Chauhan
  *        Date: June 8, 2019
- * Description: to determine the dependence of firing rate and the coefficient of variance 
- *              on the coupling strength and the number of nodes in a Hodgkin-
- *              huxley model.
+ * Description: to determine the dependence of the firing rate, the coefficient of variance 
+ *              , and count of spikes on the coupling strength and the number of nodes in a 
+ *              Hodgkin-Huxley model.
  *               
  */
 
 
 # include <iostream>
 # include <cmath>
-# include <vector>
 # include <cstdlib> //needed for random numbers
-#include <fstream> // needed to write the threshold value data to a text file
+# include <random> // for different distributions of random numbers
+# include <fstream> // needed to write the threshold value data to a text file
 
 using namespace std;
 
@@ -23,9 +23,11 @@ double hhnode_fV_central(double v, double v_peri_nodes[], double m, double h, do
 double hhnode_fm(double v, double m);
 double hhnode_fh(double v, double h);
 
-const double tmax = 300; //max time in ms (equal to 10 s)
+const int ttime = 100; // total time of simulation in seconds
+const int tmax = ttime * 1000; // total time in ms
 const double dt = 0.0001; //time step
 const double tu = 100; //relaxation time
+const double D = 500; // noise intensity
 
 int main ()
 {
@@ -35,34 +37,40 @@ int main ()
     //following chunk of codes is needed to increment the value of kappa logarithmically 
     double kappa_min = 0.4;
     double kappa_max = 1000;
-    double number_of_points = 30;
+    double number_of_points = 20; // number of values of kappa
     double alpha = 1/(number_of_points - 1) * log10(kappa_max/kappa_min);
     // this 'alpha' will be used to obtain the next value of kappa
 
     ofstream file; //creating the file to store data
-    file.open("threshold_VS_coupling_data.csv");
-    file << "Coupling,F-R central,CV central,F-R peripheral,CV peripheral" << endl;
+    file.open("firing_VS_coupling_data.csv");
+    file << "Coupling,F-R central,CV central,Count of Spikes" << endl;
+    
+    double spike_mat[20000];// to store the spike times for the central node
+    double dn = sqrt(2*dt*D)/2;
+    double noise, rand_num, rand_num1, rand_num2, rnd1, rnd2; // random numbers
 
-    for (int N = 2; N <= 10; N++) 
+    // initiallizing random number generator
+    default_random_engine generator;
+    uniform_real_distribution<double> random(0,1); // now if I write "random (generator)", it gives a uniform random number between 0 and 1
+
+    int n[] = {3,6,8};
+    for (int N : n) 
     {
         file << endl;
         file << "For N = " << N << endl;
         double v0[N], m0[N], h0[N]; // arrays for initial conditions
         double variation_amp_v0[N], variation_amp_m0[N], variation_amp_h0[N];
-        double Iext = 20.0; // starting value of external current- 
-                                // this will be increased in small steps in the following while loop 
+        double Iext = 20.0; // starting value of external current- default_random_engine generator;
+                                // this will be increased in small steps
         
-        double kappa = kappa_min; // initialization for while loop 
-        int counter = 1; //to obtain next value of kappa (logarithmically) this is used as 'i'
+        double kappa = kappa_min; // initialization for while loop   
+        int counter = 1; //to obtain next value of kappa 
 
         while (kappa < kappa_max)
-        {
-            
+        { 
             double spike_time;
-            // the following vector v is to initiate the 2D vector spike_mat to store the spike times of all N nodes
-            vector<double> v;
-            vector<vector<double> > spike_mat(N); // creates an N by 1 2D matrix/vector - we can add elements and values later
-
+	        //int count_peri = 0, 
+            int count_cen = 0;// to count the number of spikes in the central node
             counter ++; // this is for incrementing the value of kappa
             
             for (int i =0; i <= N-1; i++)
@@ -83,43 +91,73 @@ int main ()
             for (double j = 1; j <= nu; j += 1) // this updates the values of V,m,and h
             {   
                 double v_central = v0[N-1];
+
+                // generating random numbers for noise term
+                rnd1 = random(generator); // creates one unifirmly distributed random number between 0 and 1
+                rnd2 = random(generator);
+                double r = sqrt(-2*log(rnd1));// r and theta are used to create normally distributed numbers from uniformly distributed numbers
+                double theta = 2*3.14*rnd2;
+                rand_num1 = r*cos(theta);
+                rand_num2 = r*sin(theta);
+                
                 for (int k = 0; k <= N-1; k++)
                 {
-                    double v = v0[k], m = m0[k], h = h0[k]; // assigns initial values of V,m, and h corresponding to the kth node to new variables to pass through funtions                        double v_central = v0[N-1];
+                    double v = v0[k], m = m0[k], h = h0[k]; // assigns initial values of V,m, and h corresponding to the kth node to new variables to pass through funtions
                     double fV; 
-                    if (k == N-1)
+                    if (k == N-1) // this is the central node
                     { 
                         double v_peri_nodes[N-1];
                         for (int l = 0; l < N-1; l++)
                         {
                             v_peri_nodes[l] = v0[l];
                         }
-                        fV = hhnode_fV_central(v,v_peri_nodes,m,h,kappa,N); 
+                        fV = hhnode_fV_central(v,v_peri_nodes,m,h,kappa,N);
+			            v0[k] = v0[k] + (dt * fV);
                     } // calculates the change in value of V for central node
-                    else { fV = hhnode_fV(v,v_central,m,h,Iext,kappa); } // calculates the change in value of V
+                    else // these are peripheral nodes
+                    {
+                        fV = hhnode_fV(v,v_central,m,h,Iext,kappa);
+                        if (k >= 0 && k <= N/2){
+                            rand_num = rand_num1; // first half of the nodes get one value of noise
+                        }    // for the noise term
+                        else{
+                            rand_num = rand_num2; // and the rest of them get this value of noise------just for randomness
+                        }
+		                noise = dn * rand_num;
+		                v0[k] = v0[k] + (dt * fV) + noise;
+		            } // calculates the change in value of V
                     double fm = hhnode_fm(v,m); // calculates the change in value of m
                     double fh = hhnode_fh(v,h); // calculates the change in value of h
 
-                    v0[k] = v0[k] + (dt * fV); // Euler steps
+                     // Euler steps
                     m0[k] = m0[k] + (dt * fm);
                     h0[k] = h0[k] + (dt * fh);
                 } // transition to steady ends here for kth node
             } // transition to steady ends here for all N nodes
 
-            double nt = tmax/dt; 
+            double nt = tmax/dt;
+	        
             double v_new[N]; double m_new[N]; double h_new[N]; //needed for updating the values 
                                                                 //of V,m,and h                                                                
             int iflag = 1;
+	        
             for (double jj = 1; jj <= nt; jj++) // this updates the values of V,m,and h for each node one by one
             {
                 double v_central = v0[N-1];
+                // generating random numbers for noise term
+                rnd1 = random(generator); // creates one unifirmly distributed random number between 0 and 1
+                rnd2 = random(generator);
+                double r = sqrt(-2*log(rnd1));// r and theta are used to create normally distributed numbers from uniformly distributed numbers
+                double theta = 2*3.14*rnd2;
+                rand_num1 = r*cos(theta);
+                rand_num2 = r*sin(theta);
                
                 for (int kk = 0; kk <= N-1; kk++)
                 {
                     double v = v0[kk], m = m0[kk], h = h0[kk]; // assigns initial values for kth node to new variables to pass through funtions
                     double fV;
-                
-                    if (kk == N-1) 
+		    
+                    if (kk == N-1) // updating value of voltage for the central node
                     {
                         double v_peri_nodes[N-1];
                         for (int l = 0; l < N-1; l++)
@@ -127,62 +165,76 @@ int main ()
                             v_peri_nodes[l] = v0[l];
                         }
                         fV = hhnode_fV_central(v,v_peri_nodes,m,h,kappa,N);
+			            v_new[kk] = v0[kk] + (dt * fV);
                     } // calculates the change in value of V for central node
-                    else { fV = hhnode_fV(v,v_central,m,h,Iext,kappa); } // calculates the change in value of V
+                    else // updating value of voltage for peripheral nodes
+                    {
+                        fV = hhnode_fV(v,v_central,m,h,Iext,kappa);
+                        if (kk >= 0 && kk <= N/2){
+                            rand_num = rand_num1; // first half of the nodes get one value of noise
+                        } // for the noise term
+                        else{
+                            rand_num = rand_num2; // and the rest of them get this value of noise------just for randomness
+                        }
+		                noise = dn * rand_num;
+		                v_new[kk] = v0[kk] + (dt * fV) + noise; 
+		            } // calculates the change in value of V
                     double fm = hhnode_fm(v,m); // calculates the change in value of m
-                    double fh = hhnode_fh(v,h); // calculates the change in value of h
+                    double fh = hhnode_fh(v,h); // calculates the change
 
-                    v_new[kk] = v0[kk] + (dt * fV); // Euler steps
+                    // Euler steps
                     m_new[kk] = m0[kk] + (dt * fm);
                     h_new[kk] = h0[kk] + (dt * fh);
                    
-                    // discriminating spikes for all node
-                    if (v0[kk] > -20 && v_new[kk] < -20)
+                    // discriminating spikes for the central node
+		    
+		            if (v0[N-1] > -20 && v_new[N-1] < -20)
                     {
                         iflag = 1;
                     }
-                    if (v0[kk] < 20 && v_new[kk] > 20 && iflag == 1)
+                    if (v0[N-1] < 20 && v_new[N-1] > 20 && iflag == 1)
                     {
                         spike_time = (jj - 1)*dt; // this stores spike time for kkth node
-                        spike_mat[kk].push_back(spike_time);
+                        spike_mat[count_cen] = spike_time;
+			            count_cen ++;
                         iflag = 0;
                     }
+		    
                     //updating the values of V,m, and h
                     v0[kk] = v_new[kk];
                     m0[kk] = m_new[kk];
-                    h0[kk] = h_new[kk];                              }                     
+                    h0[kk] = h_new[kk];                    
                 }    
-            }// spike_mat now has all spike time values for all nodes 
+            }// spike_mat now has all spike time values for the central node 
 
             // calculations for inter-spike interval and firing rate
-            // the following vectors will store the isi for one of the peripheral nodes and the central node
-            vector<double> isi_peri(1),isi_central(1);
-            double sum1 = 0, sum2 = 0;
-            double meanISI_peri, meanISI_central, firing_rate_peri, firing_rate_central, CV_peri, CV_central;
-           // int number_spikes_peri = spike_mat[0].size();
-           //int number_spikes_central = spike_mat[N-1].size();
-            for (size_t val = 0; val < spike_mat[1].size()-1; val++)
-            {
-                isi_peri[val] = spike_mat[1][val+1] - spike_mat[1][val];
-                sum1 += isi_peri[val];
-            }
-            meanISI_peri = sum1 / (isi_peri.size());
-            firing_rate_peri = 1000/meanISI_peri;
-            CV_peri = 0;
+            // the following array will store the isi for the central node
+            double isi_central[count_cen-1];
+            double sum2 = 0, sum1 = 0;
+            double meanISI_central, firing_rate_central, CV_central;
+            
 
-            for (size_t vall = 0; vall < spike_mat[N-1].size()-1; vall++)
+            for (int val = 0; val < count_cen-1; val++) // this is to find mean inter spike interval
             {
-                isi_central[vall] = spike_mat[N-1][vall+1] - spike_mat[N-1][vall];
-                sum2 += isi_central[vall];
+                isi_central[val] = spike_mat[val+1] - spike_mat[val];
+                sum1 += isi_central[val];
             }
-            meanISI_central = sum2 / (isi_central.size());
+            meanISI_central = sum1 / (count_cen-1);
             firing_rate_central = 1000/meanISI_central;
-            CV_central = 0;
-            //cout << "The required threshold current is: " << Iext-0.1 << " for kappa "<< kappa << endl; // because last iteration of the previous loop adds an extra 0.1 to Iext
-            file << kappa << "," << firing_rate_central << "," << CV_central << "," << firing_rate_peri << "," << CV_peri << endl;
+
+            for (int vall = 0; vall < count_cen-1; vall++) // this is for standard deviation in inter spike interval
+            {
+                double num = pow((isi_central[vall] - meanISI_central),2);
+                sum2 += num;
+            }
+            double sd = sqrt(sum2/(count_cen-1));  // standard deviation
+            CV_central = sd/meanISI_central;  // covariance
+	        cout << "central firing rate = " << firing_rate_central << " and CV = " << CV_central << endl;
+            
+            file << kappa << "," << firing_rate_central << "," << CV_central << "," << count_cen << endl; //firing_rate_peri << "," << CV_peri << endl;
             double expo = alpha * (counter - 1);// for updating the value of kappa
             kappa = kappa_min * pow(10,expo);
-        }// firing rates, etc have been calculated and written in a file            
+        }// firing rates, etc for each value of kappa have been calculated and written in a file            
     }
     file.close();
     return 0;
