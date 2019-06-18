@@ -49,7 +49,7 @@ int main ()
     
     double spike_mat[20000];// to store the spike times for the central node
     double dn = sqrt(2*dt*D)/2;
-    double noise, rand_num, rand_num1, rand_num2, rnd1, rnd2; // random numbers
+    double noise, rand_num, rnd1, rnd2; // random numbers
 
     // initiallizing random number generator
     default_random_engine generator;
@@ -93,14 +93,6 @@ int main ()
             for (double j = 1; j <= nu; j += 1) // this updates the values of V,m,and h
             {   
                 double v_central = v0[N-1];
-
-                // generating random numbers for noise term
-                rnd1 = random(generator); // creates one unifirmly distributed random number between 0 and 1
-                rnd2 = random(generator);
-                double r = sqrt(-2*log(rnd1));// r and theta are used to create normally distributed numbers from uniformly distributed numbers
-                double theta = 2*3.14*rnd2;
-                rand_num1 = r*cos(theta);
-                rand_num2 = r*sin(theta);
                 
                 for (int k = 0; k <= N-1; k++)
                 {
@@ -118,13 +110,14 @@ int main ()
                     } // calculates the change in value of V for central node
                     else // these are peripheral nodes
                     {
+			            // generating random numbers for noise term
+                	    rnd1 = random(generator); // creates one unifirmly distributed random number between 0 and 1
+                	    rnd2 = random(generator);
+                	    double r = sqrt(-2*log(rnd1));// r and theta are used to create normally distributed numbers from uniformly distributed numbers
+                	    double theta = 2*3.14*rnd2;
+                	    rand_num = r*cos(theta);
                         fV = hhnode_fV(v,v_central,m,h,Iext,kappa);
-                        if (k >= 0 && k <= N/2){
-                            rand_num = rand_num1; // first half of the nodes get one value of noise
-                        }    // for the noise term
-                        else{
-                            rand_num = rand_num2; // and the rest of them get this value of noise------just for randomness
-                        }
+                        
 		                noise = dn * rand_num;
 		                v0[k] = v0[k] + (dt * fV) + noise;
 		            } // calculates the change in value of V
@@ -146,13 +139,6 @@ int main ()
             for (double jj = 1; jj <= nt; jj++) // this updates the values of V,m,and h for each node one by one
             {
                 double v_central = v0[N-1];
-                // generating random numbers for noise term
-                rnd1 = random(generator); // creates one unifirmly distributed random number between 0 and 1
-                rnd2 = random(generator);
-                double r = sqrt(-2*log(rnd1));// r and theta are used to create normally distributed numbers from uniformly distributed numbers
-                double theta = 2*3.14*rnd2;
-                rand_num1 = r*cos(theta);
-                rand_num2 = r*sin(theta);
                
                 for (int kk = 0; kk <= N-1; kk++)
                 {
@@ -171,16 +157,18 @@ int main ()
                     } // calculates the change in value of V for central node
                     else // updating value of voltage for peripheral nodes
                     {
+                        // generating random numbers for noise term
+                	    rnd1 = random(generator); // creates one unifirmly distributed random number between 0 and 1
+                	    rnd2 = random(generator);
+                	    double r = sqrt(-2*log(rnd1));// r and theta are used to create normally distributed numbers from uniformly distributed numbers
+                	    double theta = 2*3.14*rnd2;
+                	    rand_num = r*cos(theta);
+			    
                         fV = hhnode_fV(v,v_central,m,h,Iext,kappa);
-                        if (kk >= 0 && kk <= N/2){
-                            rand_num = rand_num1; // first half of the nodes get one value of noise
-                        } // for the noise term
-                        else{
-                            rand_num = rand_num2; // and the rest of them get this value of noise------just for randomness
-                        }
+                        
 		                noise = dn * rand_num;
 		                v_new[kk] = v0[kk] + (dt * fV) + noise; 
-		            } // calculates the change in value of V
+	                } // calculates the change in value of V
                     double fm = hhnode_fm(v,m); // calculates the change in value of m
                     double fh = hhnode_fh(v,h); // calculates the change
 
